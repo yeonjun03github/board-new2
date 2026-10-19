@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>환 영 합 니 다</title>
+    <style>
+        body {
+            margin: 0;
+        }
+        .login-panel {
+            width: 740px;
+            height: 540px;
+            box-sizing: border-box;
+            padding: 20px;
+            background-color: #10b981;
+        }
+    </style>
+</head>
+<body>
+<div class="login-panel">
+    <button onclick="window.location.href='/register.html'">회원가입</button>
+
+    <!-- 1. form 태그를 다시 사용하되, js에서 submit 이벤트를 완전히 통제합니다 -->
+    <form id="loginForm" autocomplete="on">
+        <h2>환영합니다!<br>로그인하세요.</h2>
+        <!-- 인풋창에 일일이 onkeydown을 달지 않아도 됩니다 -->
+        <input type="text" id="login-username" name="username" placeholder="아이디" autocomplete="username">
+        <input type="password" id="login-password" name="password" placeholder="비밀번호" autocomplete="current-password">
+        <button type="submit">로그인</button>
+    </form>
+
+    <p id="message"></p>
+</div>
+
+<script>
+    const loginForm = document.getElementById('loginForm');
+
+    // 2. form 안에서 버튼 클릭이든 엔터키든 모든 제출(submit) 시도를 가로챕니다
+    loginForm.addEventListener('submit', function(event) {
+        // 한글 입력기(IME) 엔터 중복 버그 방지
+        if (event.isComposing) return;
+
+        event.preventDefault(); // 브라우저의 강제 페이지 새로고침 방지
+        login(); // 로그인 실행
+    });
+
+    async function login() {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+
+        if (!username || !password) {
+            document.getElementById('message').innerText = "아이디와 비밀번호를 모두 입력해주세요.";
+            return;
+        }
+
+        const host = window.location.origin;
+
+        const res = await fetch(`${host}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            localStorage.setItem('token', data.token);
+            window.location.href = '/index.html';
+        } else {
+            document.getElementById('message').innerText = data.message;
+        }
+    }
+</script>
+</body>
+</html>

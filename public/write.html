@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>글 작성</title>
+</head>
+<body>
+<h2>글 작성</h2>
+<button onclick="goList()">목록으로</button>
+<br><br>
+<input type="text" id="title" placeholder="제목" style="width:400px"><br><br>
+<textarea id="content" rows="10" cols="55" placeholder="내용"></textarea><br><br>
+<input type="file" id="image" accept=".jpg,.jpeg,.png,.gif"><br><br>
+<button onclick="createPost()">작성 완료</button>
+<p id="message"></p>
+
+<script>
+    async function createPost() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        const imageFile = document.getElementById('image').files[0];
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const res = await fetch('/posts', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const data = await res.json();
+        if (res.ok) {
+            window.location.href = '/index.html';
+        } else {
+            document.getElementById('message').innerText = data.message;
+        }
+
+        function goList() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            if (title.length !== 0 || content.length !== 0) {
+                if (!confirm('작성한 내용이 있습니다. 취소하시겠습니까?')) {
+                    return;
+                }
+            }
+
+            window.location.href = '/index.html';
+        }
+    }
+
+    function goList() {
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+
+        if (title.length !== 0 || content.length !== 0) {
+            if (!confirm('작성한 내용이 있습니다. 취소하시겠습니까?')) {
+                return;
+            }
+        }
+
+        window.location.href = '/index.html';
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>게시판</title>
+</head>
+<body>
+<h2>게시판</h2>
+
+<div>
+<span id="username-display"
+      style="color: blue; font-weight: bold;"></span>
+</div>
+
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <button onclick="window.location.href='/write.html'">글 작성</button>
+    <button onclick="logout()">로그아웃</button>
+</div>
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>번호</th>
+        <th>제목</th>
+        <th>작성자</th>
+        <th>작성일</th>
+        <th>조회수</th>
+    </tr>
+    </thead>
+    <tbody id="post-list"></tbody>
+</table>
+
+<div id="pagination" style="margin-top: 10px;"></div>
+
+<script>
+    let allPosts = [];
+    let currentPage = 1;
+    const postsPerPage = 10;
+
+    async function loadPosts() {
+        const res = await fetch('/posts');
+        allPosts = await res.json();
+        renderPage(currentPage);
+    }
+
+    function renderPage(page) {
+        currentPage = page;
+
+        const start = (page - 1) * postsPerPage;
+        const end = start + postsPerPage;
+        const pagePosts = allPosts.slice(start, end);
+
+        const tbody = document.getElementById('post-list');
+        tbody.innerHTML = '';
+
+        pagePosts.forEach(post => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${post.id}</td>
+                <td><a href="/post.html?id=${post.id}">${post.title}</a></td>
+                <td>${post.username}</td>
+                <td>${new Date(post.created_at).toLocaleDateString('ko-KR')}</td>
+                <td>${post.views}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        renderPagination();
+    }
+
+    function makeLink(text, onClick, disabled) {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = text;
+        a.style.marginRight = '6px';
+        a.style.color = disabled ? 'gray' : 'blue';
+        a.style.textDecoration = disabled ? 'none' : 'underline';
+        a.style.pointerEvents = disabled ? 'none' : 'auto';
+        a.onclick = (e) => { e.preventDefault(); if (!disabled) onClick(); };
+        return a;
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(allPosts.length / postsPerPage);
+        const container = document.getElementById('pagination');
+        container.innerHTML = '';
+
+        // < 이전 버튼
+        container.appendChild(makeLink('<', () => renderPage(currentPage - 1), currentPage === 1));
+
+        // 페이지 번호들
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                // 현재 페이지: [1] 처럼 대괄호로 감싸기
+                const span = document.createElement('span');
+                span.textContent = `[${i}]`;
+                span.style.marginRight = '6px';
+                span.style.fontWeight = 'bold';
+                container.appendChild(span);
+            } else {
+                container.appendChild(makeLink(i, () => renderPage(i), false));
+            }
+        }
+
+        // > 다음 버튼
+        container.appendChild(makeLink('>', () => renderPage(currentPage + 1), currentPage === totalPages));
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+    }
+
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/login.html';
+    }
+
+    const token = localStorage.getItem('token');
+    if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('username-display').innerText =
+            `${payload.username}님, 환영합니다`;
+    }
+
+    window.addEventListener('pageshow', loadPosts);
+</script>
+</body>
+</html>

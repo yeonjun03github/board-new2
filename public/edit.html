@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>글 수정</title>
+</head>
+<body>
+<h2>글 수정</h2>
+<button onclick="window.location.href='/index.html'">목록으로</button>
+<br><br>
+<input type="text" id="title" style="width:400px"><br><br>
+<textarea id="content" rows="10" cols="50"></textarea><br><br>
+<input type="file" id="image" accept=".jpg,.jpeg,.png,.gif"><br><br>
+<button onclick="updatePost()">수정 완료</button>
+<p id="message"></p>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    async function loadPost() {
+        const res = await fetch(`/posts/${id}`);
+        const post = await res.json();
+        document.getElementById('title').value = post.title;
+        document.getElementById('content').value = post.content;
+    }
+
+    async function updatePost() {
+        const token = localStorage.getItem('token');
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        const imageFile = document.getElementById('image').files[0];
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const res = await fetch(`/posts/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const data = await res.json();
+        if (res.ok) {
+            window.location.href = `/post.html?id=${id}`;
+        } else {
+            document.getElementById('message').innerText = data.message;
+        }
+    }
+
+    loadPost();
+</script>
+</body>
+</html>
