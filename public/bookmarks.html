@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>저장한 글</title>
+    <style>
+        body { background: #fff; color: #222; }
+    </style>
+</head>
+<body>
+<h2>저장한 글</h2>
+
+<div style="margin-bottom: 16px;">
+    <button onclick="window.location.href='/index.html'">목록으로</button>
+</div>
+
+<p id="empty-message" style="display:none">저장한 글이 없습니다.</p>
+
+<table id="bookmark-table" border="1" style="display:none">
+    <thead>
+    <tr>
+        <th>번호</th>
+        <th>제목</th>
+        <th>작성자</th>
+        <th>작성일</th>
+        <th>조회수</th>
+        <th>저장일</th>
+    </tr>
+    </thead>
+    <tbody id="bookmark-list"></tbody>
+</table>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    async function loadBookmarks() {
+        const res = await fetch('/bookmarks', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const bookmarks = await res.json();
+
+        // 저장한 글이 없으면 안내 문구만 보여요
+        if (bookmarks.length === 0) {
+            document.getElementById('empty-message').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('bookmark-table').style.display = 'table';
+        const tbody = document.getElementById('bookmark-list');
+        tbody.innerHTML = '';
+
+        bookmarks.forEach(b => {
+            const tr = document.createElement('tr');
+
+            // 제목은 링크로 (누르면 글 상세로 이동)
+            const titleTd = document.createElement('td');
+            const link = document.createElement('a');
+            link.href = `/post.html?id=${b.id}`;
+            link.textContent = b.title;
+            titleTd.appendChild(link);
+
+            const cells = [b.id, null, b.username,
+                new Date(b.created_at).toLocaleDateString('ko-KR'),
+                b.views,
+                new Date(b.bookmarked_at).toLocaleDateString('ko-KR')];
+
+            cells.forEach((value, i) => {
+                if (i === 1) { tr.appendChild(titleTd); return; }
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.addEventListener('pageshow', loadBookmarks);
+</script>
+</body>
+</html>

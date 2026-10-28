@@ -88,6 +88,7 @@ export class PostsService {
         await db.collection('comment_likes').deleteMany({ comment_id: { $in: commentIds } });
         await db.collection('comments').deleteMany({ post_id: Number(id) });
         await db.collection('likes').deleteMany({ post_id: Number(id) });
+        await db.collection('bookmarks').deleteMany({ post_id: Number(id) });
         await db.collection('posts').deleteOne({ id: Number(id) });
     }
 

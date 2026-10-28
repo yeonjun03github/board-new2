@@ -18,6 +18,7 @@
     <p>작성일: <span id="created-at"></span></p>
     <p>조회수: <span id="views"></span></p>
     <button id="like-btn" onclick="toggleLike()">🤍 좋아요</button> <span id="like-count"></span>
+    <button id="bookmark-btn" onclick="toggleBookmark()">☆ 저장</button>
     <hr>
     <p id="content"></p>
     <div id="image-container"></div>
@@ -105,6 +106,42 @@
         }
 
         loadLikes();
+    }
+
+    // 내가 이 글을 저장했는지 확인해서 버튼 모양 바꾸기
+    async function loadBookmark() {
+        if (!token) return;   // 로그인 안 했으면 확인할 수 없어요 (기본 ☆ 저장 그대로)
+
+        const res = await fetch(`/posts/${id}/bookmark`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        document.getElementById('bookmark-btn').innerText = data.bookmarked ? '★ 저장됨' : '☆ 저장';
+    }
+
+    // 저장 버튼 누르기 (저장 ↔ 취소)
+    async function toggleBookmark() {
+        if (!token) {
+            alert('로그인이 필요합니다.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const res = await fetch(`/posts/${id}/bookmark`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        loadBookmark();   // 눌렀으니 버튼 모양을 다시 맞춰요
     }
 
     async function loadComments() {
@@ -344,6 +381,7 @@
         if (found) {
             loadComments();
             loadLikes();
+            loadBookmark();
         }
     });
 </script>
