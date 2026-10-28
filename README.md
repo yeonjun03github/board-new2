@@ -11,7 +11,9 @@ Express + MySQL 게시판(`board-new`)을 **NestJS + MongoDB**로 옮긴 게시�
 - 댓글 작성 / 수정 / 삭제, **대댓글**
   - 대댓글이 달린 댓글을 삭제하면 `삭제된 댓글입니다.`로 표시되고 대댓글은 유지됩니다.
 - 글 좋아요, 댓글 좋아요 (토글 방식)
-- 정적 화면 (`public/`): 목록, 상세, 작성, 수정, 로그인, 회원가입
+- **포토게시판**: 사진 여러 장(최대 10장) 업로드, 썸네일 격자 목록, 상세, 수정(사진 교체), 삭제(디스크 파일도 함께 삭제)
+- **게시글 저장(즐겨찾기)**: 글 상세에서 저장/취소(토글), 내가 저장한 글 모아보기 (저장 여부는 본인에게만 보임)
+- 정적 화면 (`public/`): 목록, 상세, 작성, 수정, 로그인, 회원가입, 포토게시판(`photos.html`), 저장한 글(`bookmarks.html`)
 
 ## 기술 스택
 
@@ -71,7 +73,7 @@ npm run start:dev    # 코드를 고치면 자동으로 다시 시작
 | GET | `/posts/:id` | 글 상세 (조회수 +1) | - |
 | POST | `/posts` | 글 작성 (`multipart/form-data`: title, content, image) | 필요 |
 | PUT | `/posts/:id` | 글 수정 (본인만) | 필요 |
-| DELETE | `/posts/:id` | 글 삭제 (본인만, 댓글·좋아요도 함께 삭제) | 필요 |
+| DELETE | `/posts/:id` | 글 삭제 (본인만, 댓글·좋아요·저장 기록도 함께 삭제) | 필요 |
 | GET | `/posts/:id/likes` | 글 좋아요 목록 | - |
 | POST | `/posts/:id/likes` | 글 좋아요 토글 | 필요 |
 
@@ -84,6 +86,22 @@ npm run start:dev    # 코드를 고치면 자동으로 다시 시작
 | DELETE | `/comments/:id` | 댓글 삭제 (본인만) | 필요 |
 | GET | `/comments/:id/likes` | 댓글 좋아요 목록 | - |
 | POST | `/comments/:id/likes` | 댓글 좋아요 토글 | 필요 |
+
+### 게시글 저장(즐겨찾기)
+| 메서드 | 주소 | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/posts/:id/bookmark` | 저장 토글 → `{ bookmarked: true/false }` | 필요 |
+| GET | `/posts/:id/bookmark` | 내가 이 글을 저장했는지 → `{ bookmarked }` | 필요 |
+| GET | `/bookmarks` | 내가 저장한 글 목록 (최근 저장순, `bookmarked_at` 포함) | 필요 |
+
+### 포토게시판
+| 메서드 | 주소 | 설명 | 인증 |
+|---|---|---|---|
+| GET | `/photos` | 사진 목록 (`thumbnail` = 첫 사진, `image_count`) | - |
+| GET | `/photos/:id` | 사진 상세 (`images` 배열, 조회수 +1) | - |
+| POST | `/photos` | 작성 (`multipart/form-data`: title, description, images 1~10장) | 필요 |
+| PUT | `/photos/:id` | 수정 (본인만, 새 `images`를 보내면 기존 사진을 모두 교체) | 필요 |
+| DELETE | `/photos/:id` | 삭제 (본인만, 업로드 파일도 삭제) | 필요 |
 
 ## 폴더 구조
 
@@ -98,6 +116,8 @@ src/
 ├─ posts/                  게시글
 ├─ comments/               댓글·대댓글·댓글 좋아요
 ├─ likes/                  글 좋아요
+├─ bookmarks/              게시글 저장(즐겨찾기)
+├─ photos/                 포토게시판
 └─ utils/                  AppError, 에러 응답 필터
 public/                    정적 화면(html), uploads/ (업로드 이미지)
 scripts/                   MySQL → MongoDB 1회용 이전 스크립트
@@ -122,6 +142,8 @@ scripts/                   MySQL → MongoDB 1회용 이전 스크립트
 | `comments` | 댓글, 대댓글(`parent_id`), 삭제 표시(`is_deleted`) |
 | `likes` | 글 좋아요 |
 | `comment_likes` | 댓글 좋아요 |
+| `bookmarks` | 게시글 저장 (`post_id` + `user_id` 조합은 하나만) |
+| `photos` | 포토게시판 (`images`: 사진 경로 배열) |
 | `counters` | 새 글·댓글·계정에 붙일 숫자 id 발급용 |
 
 문서의 `id`는 MySQL 때와 같은 **숫자**를 그대로 씁니다.
