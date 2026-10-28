@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>사진 올리기</title>
+    <style>
+        body { background: #fff; color: #222; }
+        #preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        #preview img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+<h2>사진 올리기</h2>
+
+<div><input id="title" placeholder="제목" size="40"></div>
+<div style="margin-top: 8px;"><textarea id="description" placeholder="설명 (선택)" rows="3" cols="42"></textarea></div>
+<div style="margin-top: 8px;">
+    <input id="images" type="file" accept=".jpg,.jpeg,.png,.gif" multiple onchange="showPreview()">
+    <div style="color:#666; font-size:12px;">사진 1~10장, 장당 2MB 이하 (jpg, png, gif)</div>
+</div>
+<div id="preview"></div>
+
+<button onclick="upload()">올리기</button>
+<button onclick="window.location.href='/photos.html'">취소</button>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    const MAX_FILES = 10;
+    const MAX_SIZE = 2 * 1024 * 1024;
+
+    // 고른 사진 검사 (문제가 있으면 문구를 돌려줌)
+    function checkFiles(files) {
+        if (files.length === 0) return '사진을 1장 이상 선택해주세요.';
+        if (files.length > MAX_FILES) return `사진은 최대 ${MAX_FILES}장까지 올릴 수 있습니다.`;
+        for (const file of files) {
+            if (file.size > MAX_SIZE) return `${file.name}: 2MB 이하만 올릴 수 있습니다.`;
+        }
+        return null;
+    }
+
+    // 고른 사진 미리보기
+    function showPreview() {
+        const preview = document.getElementById('preview');
+        preview.innerHTML = '';
+        for (const file of document.getElementById('images').files) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            preview.appendChild(img);
+        }
+    }
+
+    async function upload() {
+        const title = document.getElementById('title').value.trim();
+        const files = [...document.getElementById('images').files];
+
+        if (!title) return alert('제목을 입력해주세요.');
+        const problem = checkFiles(files);
+        if (problem) return alert(problem);
+
+        const form = new FormData();
+        form.append('title', title);
+        form.append('description', document.getElementById('description').value);
+        files.forEach(file => form.append('images', file)); // 서버의 FilesInterceptor('images')와 같은 이름
+
+        // Content-Type은 브라우저가 알아서 정하므로 직접 쓰지 않는다
+        const res = await fetch('/photos', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: form
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) window.location.href = '/photos.html';
+    }
+</script>
+</body>
+</html>

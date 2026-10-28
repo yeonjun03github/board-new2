@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>사진 수정</title>
+    <style>
+        body { background: #fff; color: #222; }
+        .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .thumbs img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+<h2>사진 수정</h2>
+
+<p id="not-found-message" style="display:none">존재하지 않는 사진입니다.</p>
+
+<div id="form-container" style="display:none">
+    <div><input id="title" placeholder="제목" size="40"></div>
+    <div style="margin-top: 8px;"><textarea id="description" placeholder="설명 (선택)" rows="3" cols="42"></textarea></div>
+
+    <div>현재 사진</div>
+    <div id="current" class="thumbs"></div>
+
+    <div style="margin-top: 8px;">
+        <input id="images" type="file" accept=".jpg,.jpeg,.png,.gif" multiple onchange="showPreview()">
+        <div style="color:#666; font-size:12px;">새 사진을 고르면 기존 사진이 모두 교체됩니다. 고르지 않으면 기존 사진이 유지됩니다. (최대 10장, 장당 2MB)</div>
+    </div>
+    <div id="preview" class="thumbs"></div>
+
+    <button onclick="save()">저장</button>
+    <button onclick="goBack()">취소</button>
+</div>
+
+<script>
+    const id = new URLSearchParams(window.location.search).get('id');
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    const MAX_FILES = 10;
+    const MAX_SIZE = 2 * 1024 * 1024;
+
+    function goBack() {
+        window.location.href = `/photo-detail.html?id=${id}`;
+    }
+
+    async function loadPhoto() {
+        const res = await fetch(`/photos/${id}`);
+        if (!res.ok) {
+            document.getElementById('not-found-message').style.display = 'block';
+            return;
+        }
+
+        const photo = await res.json();
+        document.getElementById('form-container').style.display = 'block';
+        document.getElementById('title').value = photo.title;
+        document.getElementById('description').value = photo.description || '';
+
+        const current = document.getElementById('current');
+        (photo.images || []).forEach(src => {
+            const img = document.createElement('img');
+            img.src = src;
+            current.appendChild(img);
+        });
+    }
+
+    function showPreview() {
+        const preview = document.getElementById('preview');
+        preview.innerHTML = '';
+        for (const file of document.getElementById('images').files) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            preview.appendChild(img);
+        }
+    }
+
+    async function save() {
+        const title = document.getElementById('title').value.trim();
+        const files = [...document.getElementById('images').files];
+
+        if (!title) return alert('제목을 입력해주세요.');
+        if (files.length > MAX_FILES) return alert(`사진은 최대 ${MAX_FILES}장까지 올릴 수 있습니다.`);
+        for (const file of files) {
+            if (file.size > MAX_SIZE) return alert(`${file.name}: 2MB 이하만 올릴 수 있습니다.`);
+        }
+
+        const form = new FormData();
+        form.append('title', title);
+        form.append('description', document.getElementById('description').value);
+        files.forEach(file => form.append('images', file));
+
+        const res = await fetch(`/photos/${id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: form
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) goBack();
+    }
+
+    loadPhoto();
+</script>
+</body>
+</html>

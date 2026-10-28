@@ -9,7 +9,8 @@ export const uploadOptions = {
             cb(null, 'public/uploads/');
         },
         filename: (req, file, cb) => {
-            const uniqueName = Date.now() + path.extname(file.originalname);
+            // 여러 장을 한 번에 올려도 이름이 겹치지 않도록 무작위 숫자를 붙인다
+            const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
             cb(null, uniqueName);
         },
     }),

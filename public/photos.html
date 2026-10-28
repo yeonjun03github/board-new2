@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>포토게시판</title>
+    <style>
+        body { background: #fff; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        .card { cursor: pointer; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+        .thumb { position: relative; width: 100%; aspect-ratio: 1 / 1; background: #f0f0f0; }
+        .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .count { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff;
+                 font-size: 12px; padding: 2px 6px; border-radius: 10px; }
+        .info { padding: 8px; font-size: 14px; }
+        .title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meta { color: #666; font-size: 12px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<h2>포토게시판</h2>
+
+<div>
+    <span id="username-display" style="color: blue; font-weight: bold;"></span>
+</div>
+
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <button onclick="window.location.href='/photo-write.html'">사진 올리기</button>
+    <button onclick="window.location.href='/index.html'">글 게시판</button>
+    <button onclick="logout()">로그아웃</button>
+</div>
+
+<p id="empty-message" style="display:none">아직 올라온 사진이 없습니다.</p>
+<div id="photo-grid" class="grid"></div>
+<div id="pagination" style="margin-top: 16px;"></div>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    } else {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('username-display').innerText = `${payload.username}님, 환영합니다`;
+    }
+
+    let allPhotos = [];
+    let currentPage = 1;
+    const perPage = 12;
+
+    async function loadPhotos() {
+        const res = await fetch('/photos');
+        allPhotos = await res.json();
+        document.getElementById('empty-message').style.display = allPhotos.length === 0 ? 'block' : 'none';
+        renderPage(currentPage);
+    }
+
+    function renderPage(page) {
+        currentPage = page;
+        const grid = document.getElementById('photo-grid');
+        grid.innerHTML = '';
+
+        allPhotos.slice((page - 1) * perPage, page * perPage).forEach(photo => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => window.location.href = `/photo-detail.html?id=${photo.id}`;
+
+            const thumb = document.createElement('div');
+            thumb.className = 'thumb';
+            const img = document.createElement('img');
+            img.src = photo.thumbnail;
+            img.alt = photo.title;
+            thumb.appendChild(img);
+            if (photo.image_count > 1) {
+                const count = document.createElement('span');
+                count.className = 'count';
+                count.textContent = `${photo.image_count}장`;
+                thumb.appendChild(count);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'info';
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.textContent = photo.title;
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = `${photo.username} · ${new Date(photo.created_at).toLocaleDateString('ko-KR')} · 조회 ${photo.views}`;
+            info.append(title, meta);
+
+            card.append(thumb, info);
+            grid.appendChild(card);
+        });
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.max(1, Math.ceil(allPhotos.length / perPage));
+        const container = document.getElementById('pagination');
+        container.innerHTML = '';
+
+        const prev = document.createElement('button');
+        prev.textContent = '<';
+        prev.disabled = currentPage === 1;
+        prev.onclick = () => renderPage(currentPage - 1);
+        container.appendChild(prev);
+
+        const label = document.createElement('span');
+        label.textContent = ` ${currentPage} / ${totalPages} `;
+        container.appendChild(label);
+
+        const next = document.createElement('button');
+        next.textContent = '>';
+        next.disabled = currentPage === totalPages;
+        next.onclick = () => renderPage(currentPage + 1);
+        container.appendChild(next);
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+    }
+
+    window.addEventListener('pageshow', loadPhotos);
+</script>
+</body>
+</html>

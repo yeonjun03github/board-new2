@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>사진 상세</title>
+    <style>
+        body { background: #fff; color: #222; }
+        #images img { display: block; max-width: 100%; width: 600px; margin-bottom: 12px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+<p id="not-found-message" style="display:none">존재하지 않는 사진입니다.</p>
+
+<div id="photo-container" style="display:none">
+    <button onclick="window.location.href='/photos.html'">목록으로</button>
+    <button id="edit-btn" onclick="goEdit()" style="display:none">수정</button>
+    <button id="delete-btn" onclick="deletePhoto()" style="display:none">삭제</button>
+
+    <h2 id="title"></h2>
+    <p>작성자: <span id="username"></span></p>
+    <p>작성일: <span id="created-at"></span> · 조회수: <span id="views"></span></p>
+    <hr>
+    <p id="description" style="white-space: pre-wrap;"></p>
+    <div id="images"></div>
+</div>
+
+<script>
+    const id = new URLSearchParams(window.location.search).get('id');
+    const token = localStorage.getItem('token');
+    let myUserId = null;
+
+    if (token) {
+        myUserId = JSON.parse(atob(token.split('.')[1])).id;
+    }
+
+    async function loadPhoto() {
+        const res = await fetch(`/photos/${id}`);
+
+        if (!res.ok) {
+            document.getElementById('not-found-message').style.display = 'block';
+            return;
+        }
+
+        const photo = await res.json();
+        document.getElementById('photo-container').style.display = 'block';
+        document.getElementById('title').innerText = photo.title;
+        document.getElementById('username').innerText = photo.username;
+        document.getElementById('created-at').innerText = new Date(photo.created_at).toLocaleDateString('ko-KR');
+        document.getElementById('views').innerText = photo.views;
+        document.getElementById('description').innerText = photo.description || '';
+
+        const container = document.getElementById('images');
+        (photo.images || []).forEach(src => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = photo.title;
+            container.appendChild(img);
+        });
+
+        if (myUserId && myUserId === photo.user_id) {
+            document.getElementById('edit-btn').style.display = 'inline';
+            document.getElementById('delete-btn').style.display = 'inline';
+        }
+    }
+
+    function goEdit() {
+        window.location.href = `/photo-edit.html?id=${id}`;
+    }
+
+    async function deletePhoto() {
+        if (!confirm('삭제하시겠습니까?')) return;
+        const res = await fetch(`/photos/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) window.location.href = '/photos.html';
+    }
+
+    loadPhoto();
+</script>
+</body>
+</html>
